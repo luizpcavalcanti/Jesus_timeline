@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jesus — Timeline & Historical Story (Interactive)</title>
+  <meta name="description" content="Interactive timeline and evidence-based narrative of the historical Jesus. Designed for scholars, students and the curious." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#98a0b3; --accent:#7dd3fc; --glass: rgba(255,255,255,0.04);
+      --maxw:1100px; --glass-2: rgba(255,255,255,0.02);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;
+      background:linear-gradient(180deg,#071024 0%, #07122a 55%, #07122a 100%); color:#e6eef8;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; padding:40px 20px;
+      display:flex; align-items:flex-start; justify-content:center;
+    }
+    .wrap{max-width:var(--maxw); width:100%;}
+
+    header{display:flex; gap:20px; align-items:center; margin-bottom:22px}
+    .logo{width:64px; height:64px; border-radius:10px; background:linear-gradient(135deg,#03203a,#06304e); display:flex;align-items:center;justify-content:center; box-shadow:0 6px 20px rgba(2,6,23,0.6);}
+    .logo strong{font-size:20px; color:var(--accent)}
+    h1{margin:0; font-weight:800; font-size:20px}
+    p.lead{margin:4px 0 0; color:var(--muted); font-size:13px}
+
+    .grid{display:grid; grid-template-columns: 360px 1fr; gap:20px}
+
+    /* left panel */
+    .panel{background:linear-gradient(180deg,var(--card), rgba(6,12,22,0.6)); border-radius:12px; padding:18px; box-shadow:0 6px 22px rgba(2,6,23,0.6);}
+    .panel h2{margin:0 0 10px; font-size:14px}
+    .meta{font-size:13px; color:var(--muted); line-height:1.6}
+    .filters{margin-top:12px; display:flex; flex-direction:column; gap:10px}
+    .search{display:flex; gap:8px}
+    .search input{flex:1; background:var(--glass); border:1px solid rgba(255,255,255,0.03); padding:10px 12px; border-radius:10px; color:inherit}
+    .chip-row{display:flex; gap:8px; flex-wrap:wrap}
+    .chip{background:var(--glass-2); padding:8px 10px; border-radius:999px; font-size:13px; cursor:pointer; border:1px solid rgba(255,255,255,0.02)}
+    .chip.active{background:linear-gradient(90deg,#07324a,#044d60); color:var(--accent); border-color: rgba(125,211,252,0.12)}
+
+    nav.timeline-nav{margin-top:14px; display:flex; gap:8px; flex-direction:column}
+    .summary{margin-top:12px; background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:12px; border-radius:8px; color:var(--muted); font-size:13px}
+
+    /* right content */
+    .canvas{min-height:600px; padding:18px; border-radius:12px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+
+    .timeline{position:relative; padding:18px 10px}
+    .ruler{height:2px; background:linear-gradient(90deg, rgba(125,211,252,0.14), rgba(125,211,252,0.04)); margin:12px 0; border-radius:2px}
+
+    .event-list{display:grid; gap:12px}
+    .event{display:flex; gap:14px; align-items:flex-start; padding:12px; background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); border-radius:10px; border:1px solid rgba(255,255,255,0.02)}
+    .event .dot{min-width:56px; text-align:center}
+    .badge{display:inline-block; padding:6px 8px; border-radius:8px; font-weight:600; font-size:13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03)}
+    .ev-title{font-weight:700}
+    .ev-meta{color:var(--muted); font-size:13px}
+
+    .event .body{flex:1}
+    .controls{display:flex; gap:8px; align-items:center}
+    button.btn{background:linear-gradient(90deg,#07324a,#035b73); border:none; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600}
+    button.ghost{background:transparent; border:1px solid rgba(255,255,255,0.04); padding:8px 10px}
+
+    .sources{margin-top:18px; color:var(--muted); font-size:13px}
+
+    footer{margin-top:22px; color:var(--muted); font-size:13px}
+
+    /* modal */
+    .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60}
+    .modal.open{display:flex}
+    .modal .win{width:min(920px,96%); max-height:88vh; overflow:auto; background:linear-gradient(180deg,#071829,#051126); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.03)}
+    .modal h3{margin-top:0}
+
+    /* responsive */
+    @media (max-width:880px){.grid{grid-template-columns:1fr;}.panel{order:2}.canvas{order:1}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo" aria-hidden="true"><strong>J</strong></div>
+      <div>
+        <h1>Jesus — Interactive Historical Timeline</h1>
+        <p class="lead">Concise, evidence-focused narrative and primary-source anchors. Use the filters to explore events, sources and scholarship.</p>
+      </div>
+    </header>
+
+    <main class="grid">
+      <aside class="panel" aria-label="Controls and metadata">
+        <h2>Filters & Tools</h2>
+        <div class="meta">
+          <div><strong>Scope:</strong> Life, ministry, trial & death, early reception (c. 4 BCE — 120 CE)</div>
+          <div style="margin-top:6px"><strong>Design goal:</strong> historically anchored, source-tagged events with modern scholarly notes.</div>
+        </div>
+
+        <div class="filters">
+          <div class="search" role="search">
+            <input id="q" placeholder="Search events or keywords (eg. Pilate, baptism, Galilee)" />
+            <button class="btn" id="searchBtn">Search</button>
+          </div>
+
+          <div class="chip-row" aria-label="Event type filters">
+            <div class="chip active" data-type="all">All</div>
+            <div class="chip" data-type="birth">Birth</div>
+            <div class="chip" data-type="ministry">Ministry</div>
+            <div class="chip" data-type="trial">Trial & Death</div>
+            <div class="chip" data-type="reception">Early Reception</div>
+            <div class="chip" data-type="source">Primary Sources</div>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button class="btn" id="showAll">Reset</button>
+            <button class="ghost" id="openSources">Sources</button>
+          </div>
+
+        </div>
+
+        <div class="summary" aria-live="polite">
+          <strong>Quick guide:</strong>
+          <div>Use the timeline to open detailed notes. Events include citations (Josephus, Tacitus, Paul, Gospels) and short scholarly commentary.</div>
+        </div>
+
+        <nav class="timeline-nav">
+          <h3 style="margin:12px 0 6px; font-size:13px">Jump to</h3>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <button class="chip" data-scroll="0">Birth & Context</button>
+            <button class="chip" data-scroll="5">Baptism & Early Ministry</button>
+            <button class="chip" data-scroll="10">Entry to Jerusalem</button>
+            <button class="chip" data-scroll="15">Trial & Crucifixion</button>
+            <button class="chip" data-scroll="20">Early Reception</button>
+          </div>
+        </nav>
+
+      </aside>
+
+      <section class="canvas panel" aria-label="Timeline canvas">
+        <div class="timeline">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+            <div><strong style="font-size:16px">Interactive Timeline</strong><div class="ev-meta">Chronological events with primary-source anchors</div></div>
+            <div class="controls"><button class="ghost" id="play">Auto-play</button><button class="btn" id="exportBtn">Export PDF</button></div>
+          </div>
+
+          <div class="ruler" aria-hidden="true"></div>
+
+          <div class="event-list" id="events"></div>
+
+          <div class="sources" id="footerSources">
+            <strong>Key sources:</strong> Josephus (Antiquities), Tacitus (Annals), Pliny the Younger, Paul (letters), Synoptic Gospels. Click 'Sources' for full bibliography and translations.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <div>Built for historical clarity • Includes source notes & suggested bibliography</div>
+        <div style="font-size:13px; color:var(--muted)">v1 — interactive single-file</div>
+      </div>
+    </footer>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="win" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">Primary Sources & Bibliography</h3>
+      <p style="color:var(--muted)">Translations provided for readability. For scholarship consult original-language editions and critical commentaries.</p>
+      <div id="sourceBody"></div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px">
+        <button class="ghost" id="closeModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DATA: curated timeline events (brief, historically oriented)
+    const EVENTS = [
+      {id:1, year:-6, type:'birth', title:'Estimated birth of Jesus (approx.)', tag:'Context', summary:'Scholars place Jesus\' birth between 6–4 BCE based on historical clues (Herod the Great).', sources:['Matthew(2)','Luke(2)']},
+      {id:2, year:4, type:'context', title:'Herod the Great dies (4 BCE)', tag:'Context', summary:'Herod\'s death helps anchor chronology used in Gospel accounts.', sources:['Josephus']},
+      {id:3, year:26, type:'ministry', title:'Start of John the Baptist\'s activity', tag:'Ministry', summary:'John the Baptist is a key precursor; his ministry overlaps with early Jesus traditions.', sources:['Luke(3)','Josephus']},
+      {id:4, year:28, type:'ministry', title:'Baptism of Jesus by John', tag:'Ministry', summary:'Attested in all four Gospels and referenced implicitly in Paul. Considered an early and likely historical event.', sources:['Mark(1)','Paul']},
+      {id:5, year:29, type:'ministry', title:'Galilean ministry and teachings', tag:'Ministry', summary:'Parables, healings, and itinerant preaching; scholars debate precise chronology but agree on a Galilean core.', sources:['Mark','Q?']},
+      {id:6, year:30, type:'trial', title:'Entry into Jerusalem — Passion Week', tag:'Trial', summary:'Final week: entry, temple actions, Last Supper, arrest, trial, crucifixion.', sources:['Mark','Luke','John','Tacitus','Josephus']},
+      {id:7, year:30, type:'trial', title:'Crucifixion under Pontius Pilate', tag:'Trial', summary:'Multiple independent attestations (Roman & Jewish authors) link execution to Pilate.', sources:['Tacitus','Josephus','Gospels','Paul']},
+      {id:8, year:33, type:'reception', title:'Earliest Christian groups and Paul\'s letters (c. 50–60 CE)', tag:'Reception', summary:'Letters of Paul reference communities and named individuals who knew Jesus or early followers.', sources:['Paul']},
+      {id:9, year:93, type:'source', title:'Josephus mentions Jesus & James (Antiquities, c.93)', tag:'Source', summary:'Two passages in Antiquities refer to Jesus and to James, brother of Jesus; one passage (Testimonium) is debated but a core reference is widely accepted.', sources:['Josephus']},
+      {id:10, year:112, type:'source', title:'Pliny the Younger on Christian worship (c.112)', tag:'Source', summary:'Early Roman description of Christian practice: singing hymns to Christ as a god.', sources:['Pliny']},
+      {id:11, year:116, type:'source', title:'Tacitus on Christus and execution under Pilate (c.116)', tag:'Source', summary:'Tacitus attests to Christus executed under Pilate and notes repression of the superstition after Nero\'s persecution.', sources:['Tacitus']}
+    ];
+
+    // Utils & render
+    const eventsEl = document.getElementById('events');
+    function render(list){
+      eventsEl.innerHTML='';
+      list.forEach(e=>{
+        const div = document.createElement('div'); div.className='event';
+        div.innerHTML = `
+          <div class="dot"><div class="badge">${e.year <=0 ? Math.abs(e.year)+ ' BCE' : e.year + ' CE'}</div></div>
+          <div class="body">
+            <div class="ev-title">${e.title}</div>
+            <div class="ev-meta">${e.summary}</div>
+            <div style="margin-top:8px; display:flex; gap:8px; align-items:center">
+              <button class="chip" data-id="${e.id}">Open</button>
+              <div style="color:var(--muted); font-size:13px">Sources: ${e.sources.join(', ')}</div>
+            </div>
+          </div>
+        `;
+        eventsEl.appendChild(div);
+      })
+    }
+    render(EVENTS);
+
+    // Search & filter
+    document.querySelectorAll('.chip-row .chip').forEach(ch=>{
+      ch.addEventListener('click', ()=>{
+        document.querySelectorAll('.chip-row .chip').forEach(x=>x.classList.remove('active'));
+        ch.classList.add('active');
+        const t = ch.dataset.type;
+        if(t==='all'){ render(EVENTS); return }
+        render(EVENTS.filter(ev=>ev.type===t || ev.tag?.toLowerCase()===t));
+      })
+    });
+
+    document.getElementById('searchBtn').addEventListener('click', ()=>{
+      const q = document.getElementById('q').value.trim().toLowerCase();
+      if(!q){ render(EVENTS); return }
+      render(EVENTS.filter(ev=> (ev.title+ ' ' + ev.summary + ' ' + ev.sources.join(' ')).toLowerCase().includes(q)));
+    });
+
+    // Open event modal w/ source extracts
+    document.body.addEventListener('click', e=>{
+      const btn = e.target.closest('button.chip[data-id]');
+      if(!btn) return;
+      const id = Number(btn.dataset.id);
+      const ev = EVENTS.find(x=>x.id===id);
+      openModalWithEvent(ev);
+    });
+
+    const modal = document.getElementById('modal');
+    const sourceBody = document.getElementById('sourceBody');
+    function openModalWithEvent(ev){
+      sourceBody.innerHTML = '';
+      const h = document.createElement('h4'); h.textContent = ev.title; sourceBody.appendChild(h);
+      const p = document.createElement('p'); p.textContent = ev.summary; sourceBody.appendChild(p);
+
+      const list = document.createElement('div'); list.style.marginTop='10px';
+      // attach short excerpts for each source (concise)
+      ev.sources.forEach(s=>{
+        const card = document.createElement('div'); card.style.padding='10px'; card.style.borderTop='1px solid rgba(255,255,255,0.02)';
+        const t = document.createElement('div'); t.style.fontWeight='700'; t.style.marginBottom='6px'; t.textContent = s;
+        const excerpt = document.createElement('div'); excerpt.style.color='var(--muted)'; excerpt.textContent = lookupSourceExcerpt(s);
+        card.appendChild(t); card.appendChild(excerpt); list.appendChild(card);
+      });
+      sourceBody.appendChild(list);
+      modal.classList.add('open');
+    }
+
+    function lookupSourceExcerpt(tag){
+      // concise, neutral excerpts used as pointers; user should consult full translations
+      const map = {
+        'Matthew(2)': 'Birth narratives: Matthew places Jesus\' birth in Bethlehem and links it with Herod; announces Magi and flight to Egypt (narrative theological emphasis).',
+        'Luke(2)': 'Luke\'s birth narrative emphasizes Nazareth, shepherds, and temple presentation (Luke is attentive to historical detail but shaped by theological aims).',
+        'Josephus': 'Josephus mentions Jesus in Antiquities: a disputed Testimonium and an independent reference to James, "brother of Jesus called Christ".',
+        'Mark(1)': 'Mark opens with John the Baptist; baptism attributed to Jesus and is an early datum corroborated across sources.',
+        'Paul': 'Paul\'s authentic letters (e.g., 1 Thessalonians, Galatians) reference Jesus\' death and early believers; Paul names individuals and creedal traditions.',
+        'Tacitus': 'Roman historian refers to Christus being executed under Pontius Pilate during Tiberius\'s rule (used to contextualize Nero\'s persecutions).',
+        'Pliny': 'Pliny the Younger describes Christians meeting to sing hymns to Christ as a god, early Roman administrative testimony.'
+      };
+      return map[tag] || 'Primary source reference — consult a translation or critical edition for full context.';
+    }
+
+    document.getElementById('closeModal').addEventListener('click', ()=> modal.classList.remove('open'));
+    document.getElementById('openSources').addEventListener('click', ()=>{
+      // show full bibliography in modal
+      sourceBody.innerHTML = `
+        <h4>Selected bibliography & translations</h4>
+        <ul style="color:var(--muted)">
+          <li>Flavius Josephus, <em>Antiquities of the Jews</em> (esp. XVIII.3; XX.9). Critical editions & translations available.</li>
+          <li>Tacitus, <em>Annals</em> XV.44 — Nero and the Christians.</li>
+          <li>Pliny the Younger, Letters X.96 — administrative description of Christian worship.</li>
+          <li>Pauline Epistles (authentic letters): 1 Thessalonians, Galatians, 1 Corinthians.</li>
+          <li>Synoptic Gospels: Mark, Matthew, Luke; Gospel of John.</li>
+          <li>Modern studies: Bart D. Ehrman, Maurice Casey, Jan Assmann — for historiographical readings.</li>
+        </ul>
+        <p style="color:var(--muted)">Note: For textual criticism, consult critical editions (e.g., Nestle-Aland for New Testament; Loeb Classical Library for Tacitus/Josephus) and modern commentaries.</p>
+      `;
+      modal.classList.add('open');
+    });
+
+    // jump nav
+    document.querySelectorAll('[data-scroll]').forEach(b=>b.addEventListener('click', ()=>{
+      const idx = Number(b.dataset.scroll);
+      const nodes = document.querySelectorAll('.event');
+      const target = nodes[Math.min(nodes.length-1, idx)];
+      if(target) target.scrollIntoView({behavior:'smooth', block:'center'});
+    }));
+
+    // export (simple print layout)
+    document.getElementById('exportBtn').addEventListener('click', ()=>{
+      window.print();
+    });
+
+    // basic a11y: escape to close
+    document.addEventListener('keydown', e=>{ if(e.key==='Escape') modal.classList.remove('open'); });
+
+    // small progressive enhancement: autoplay events
+    let autoplay;
+    document.getElementById('play').addEventListener('click', ()=>{
+      const nodes = Array.from(document.querySelectorAll('.event'));
+      if(!nodes.length){
+        // nothing to play
+        console.warn('No events to autoplay.');
+        return;
+      }
+      let i=0;
+      // toggle stop if already playing
+      if(autoplay){ clearInterval(autoplay); autoplay=null; document.getElementById('play').textContent='Auto-play'; return }
+      const playBtn = document.getElementById('play');
+      playBtn.textContent='Stop';
+
+      autoplay = setInterval(()=>{
+        // guard in case DOM changed
+        const currentNodes = Array.from(document.querySelectorAll('.event'));
+        if(i>=currentNodes.length){ clearInterval(autoplay); autoplay=null; playBtn.textContent='Auto-play'; return }
+        const node = currentNodes[i];
+        if(!node){ clearInterval(autoplay); autoplay=null; playBtn.textContent='Auto-play'; return }
+        node.scrollIntoView({behavior:'smooth', block:'center'});
+        // animate safely by toggling a class rather than direct style access
+        node.classList.add('pulse-highlight');
+        // remove highlight after animation
+        setTimeout(()=>{ node.classList.remove('pulse-highlight'); }, 900);
+        i++;
+      }, 1800);
+    });
+
+    // add CSS for pulse highlight dynamically to avoid direct style manipulation
+    (function addHighlightStyle(){
+      const css = `.pulse-highlight{box-shadow:0 8px 30px rgba(7,115,147,0.12); transition:box-shadow .35s ease;} .event{transition:box-shadow .35s ease;}`;
+      const s = document.createElement('style'); s.appendChild(document.createTextNode(css)); document.head.appendChild(s);
+    })();
+
+  </script>
+</body>
+</html>
