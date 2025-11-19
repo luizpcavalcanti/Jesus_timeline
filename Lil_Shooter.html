@@ -198,4 +198,145 @@
             <div class="ev-title">${e.title}</div>
             <div class="ev-meta">${e.summary}</div>
             <div style="margin-top:8px; display:flex; gap:8px; align-items:center">
-              <button class="chip" data
+              <button class="chip" data-id="${e.id}">Open</button>
+              <div style="color:var(--muted); font-size:13px">Sources: ${e.sources.join(', ')}</div>
+            </div>
+          </div>
+        `;
+        eventsEl.appendChild(div);
+      })
+    }
+    render(EVENTS);
+
+    // Search & filter
+    document.querySelectorAll('.chip-row .chip').forEach(ch=>{
+      ch.addEventListener('click', ()=>{
+        document.querySelectorAll('.chip-row .chip').forEach(x=>x.classList.remove('active'));
+        ch.classList.add('active');
+        const t = ch.dataset.type;
+        if(t==='all'){ render(EVENTS); return }
+        render(EVENTS.filter(ev=>ev.type===t || ev.tag?.toLowerCase()===t));
+      })
+    });
+
+    document.getElementById('searchBtn').addEventListener('click', ()=>{
+      const q = document.getElementById('q').value.trim().toLowerCase();
+      if(!q){ render(EVENTS); return }
+      render(EVENTS.filter(ev=> (ev.title+ ' ' + ev.summary + ' ' + ev.sources.join(' ')).toLowerCase().includes(q)));
+    });
+
+    // Open event modal w/ source extracts
+    document.body.addEventListener('click', e=>{
+      const btn = e.target.closest('button.chip[data-id]');
+      if(!btn) return;
+      const id = Number(btn.dataset.id);
+      const ev = EVENTS.find(x=>x.id===id);
+      openModalWithEvent(ev);
+    });
+
+    const modal = document.getElementById('modal');
+    const sourceBody = document.getElementById('sourceBody');
+    function openModalWithEvent(ev){
+      sourceBody.innerHTML = '';
+      const h = document.createElement('h4'); h.textContent = ev.title; sourceBody.appendChild(h);
+      const p = document.createElement('p'); p.textContent = ev.summary; sourceBody.appendChild(p);
+
+      const list = document.createElement('div'); list.style.marginTop='10px';
+      // attach short excerpts for each source (concise)
+      ev.sources.forEach(s=>{
+        const card = document.createElement('div'); card.style.padding='10px'; card.style.borderTop='1px solid rgba(255,255,255,0.02)';
+        const t = document.createElement('div'); t.style.fontWeight='700'; t.style.marginBottom='6px'; t.textContent = s;
+        const excerpt = document.createElement('div'); excerpt.style.color='var(--muted)'; excerpt.textContent = lookupSourceExcerpt(s);
+        card.appendChild(t); card.appendChild(excerpt); list.appendChild(card);
+      });
+      sourceBody.appendChild(list);
+      modal.classList.add('open');
+    }
+
+    function lookupSourceExcerpt(tag){
+      // concise, neutral excerpts used as pointers; user should consult full translations
+      const map = {
+        'Matthew(2)': 'Birth narratives: Matthew places Jesus\' birth in Bethlehem and links it with Herod; announces Magi and flight to Egypt (narrative theological emphasis).',
+        'Luke(2)': 'Luke\'s birth narrative emphasizes Nazareth, shepherds, and temple presentation (Luke is attentive to historical detail but shaped by theological aims).',
+        'Josephus': 'Josephus mentions Jesus in Antiquities: a disputed Testimonium and an independent reference to James, "brother of Jesus called Christ".',
+        'Mark(1)': 'Mark opens with John the Baptist; baptism attributed to Jesus and is an early datum corroborated across sources.',
+        'Paul': 'Paul\'s authentic letters (e.g., 1 Thessalonians, Galatians) reference Jesus\' death and early believers; Paul names individuals and creedal traditions.',
+        'Tacitus': 'Roman historian refers to Christus being executed under Pontius Pilate during Tiberius\'s rule (used to contextualize Nero\'s persecutions).',
+        'Pliny': 'Pliny the Younger describes Christians meeting to sing hymns to Christ as a god, early Roman administrative testimony.'
+      };
+      return map[tag] || 'Primary source reference — consult a translation or critical edition for full context.';
+    }
+
+    document.getElementById('closeModal').addEventListener('click', ()=> modal.classList.remove('open'));
+    document.getElementById('openSources').addEventListener('click', ()=>{
+      // show full bibliography in modal
+      sourceBody.innerHTML = `
+        <h4>Selected bibliography & translations</h4>
+        <ul style="color:var(--muted)">
+          <li>Flavius Josephus, <em>Antiquities of the Jews</em> (esp. XVIII.3; XX.9). Critical editions & translations available.</li>
+          <li>Tacitus, <em>Annals</em> XV.44 — Nero and the Christians.</li>
+          <li>Pliny the Younger, Letters X.96 — administrative description of Christian worship.</li>
+          <li>Pauline Epistles (authentic letters): 1 Thessalonians, Galatians, 1 Corinthians.</li>
+          <li>Synoptic Gospels: Mark, Matthew, Luke; Gospel of John.</li>
+          <li>Modern studies: Bart D. Ehrman, Maurice Casey, Jan Assmann — for historiographical readings.</li>
+        </ul>
+        <p style="color:var(--muted)">Note: For textual criticism, consult critical editions (e.g., Nestle-Aland for New Testament; Loeb Classical Library for Tacitus/Josephus) and modern commentaries.</p>
+      `;
+      modal.classList.add('open');
+    });
+
+    // jump nav
+    document.querySelectorAll('[data-scroll]').forEach(b=>b.addEventListener('click', ()=>{
+      const idx = Number(b.dataset.scroll);
+      const nodes = document.querySelectorAll('.event');
+      const target = nodes[Math.min(nodes.length-1, idx)];
+      if(target) target.scrollIntoView({behavior:'smooth', block:'center'});
+    }));
+
+    // export (simple print layout)
+    document.getElementById('exportBtn').addEventListener('click', ()=>{
+      window.print();
+    });
+
+    // basic a11y: escape to close
+    document.addEventListener('keydown', e=>{ if(e.key==='Escape') modal.classList.remove('open'); });
+
+    // small progressive enhancement: autoplay events
+    let autoplay;
+    document.getElementById('play').addEventListener('click', ()=>{
+      const nodes = Array.from(document.querySelectorAll('.event'));
+      if(!nodes.length){
+        // nothing to play
+        console.warn('No events to autoplay.');
+        return;
+      }
+      let i=0;
+      // toggle stop if already playing
+      if(autoplay){ clearInterval(autoplay); autoplay=null; document.getElementById('play').textContent='Auto-play'; return }
+      const playBtn = document.getElementById('play');
+      playBtn.textContent='Stop';
+
+      autoplay = setInterval(()=>{
+        // guard in case DOM changed
+        const currentNodes = Array.from(document.querySelectorAll('.event'));
+        if(i>=currentNodes.length){ clearInterval(autoplay); autoplay=null; playBtn.textContent='Auto-play'; return }
+        const node = currentNodes[i];
+        if(!node){ clearInterval(autoplay); autoplay=null; playBtn.textContent='Auto-play'; return }
+        node.scrollIntoView({behavior:'smooth', block:'center'});
+        // animate safely by toggling a class rather than direct style access
+        node.classList.add('pulse-highlight');
+        // remove highlight after animation
+        setTimeout(()=>{ node.classList.remove('pulse-highlight'); }, 900);
+        i++;
+      }, 1800);
+    });
+
+    // add CSS for pulse highlight dynamically to avoid direct style manipulation
+    (function addHighlightStyle(){
+      const css = `.pulse-highlight{box-shadow:0 8px 30px rgba(7,115,147,0.12); transition:box-shadow .35s ease;} .event{transition:box-shadow .35s ease;}`;
+      const s = document.createElement('style'); s.appendChild(document.createTextNode(css)); document.head.appendChild(s);
+    })();
+
+  </script>
+</body>
+</html>
