@@ -1,501 +1,201 @@
-
-<div  style="text-align: center ; display: flex ;align-items: center; justify-content: center">
-<canvas id="ctx" width="800" height="800" style="border: 0.5rem outset pink"></canvas>
-</div>
-<!--Audio files-->
-<audio id="shoot" src="./sounds/shoot.wav"></audio>
-<audio id="bigshoot" src="./sounds/bigshoot.wav"></audio>
-<audio id="supershoot" src="./sounds/supershoot.wav"></audio>
-<audio id="powerup" src="./sounds/powerup.wav"></audio>
-<audio id="coin" src="./sounds/coin.wav"></audio>
-<audio id="hit" src="./sounds/hit.wav"></audio>
-
-<centre>
-<!--JS-->
-<script>
-        //////// GLOBAL
-
-        var ctx = document.getElementById("ctx").getContext("2d");
-        ctx.font = '13px Verdana';
-        var HEIGHT = 800;
-        var WIDTH = 800;
-        var timeWhenGameStarted = Date.now();  // return time in ms
-        var frameCount = 0;
-        var score = 0;
-
-        var player;
-        var enemyList = {};
-        var upgradeList = {};
-        var bulletList = {};
-        
-
-        ///////////////// FUNCTIONS
-
-        playerConstructor = function () {
-
-                player = {
-
-                type: 'player',
-                x: HEIGHT/2,
-                xspeed: 0,
-                y: WIDTH/2,
-                yspeed: 0,
-                hp: 10,
-                width: 20,
-                height: 20,
-                color: 'LightGreen',
-                //
-                atakSpeed: 1,
-                atakCounter: 0,
-                pressingDown:false,
-                pressingUp:false,
-                pressingLeft:false,
-                pressingRight:false,
-                AimAngle:0,
-                }
-        }
-        playerConstructor ();
-
-
-        enemyConstructor = function (id, x, y, xspeed, yspeed, width, height, color) { //enemy constructor 
-
-                var enemy = {
-                        
-                        type: 'enemy',
-                        x: x,
-                        xspeed: xspeed,
-                        y: y,
-                        yspeed: yspeed,
-                        id: id,
-                        width: width,
-                        height: height,
-                        AimAngle:0,
-                        atkSpeed:1,
-                        color: 'Maroon',
-
-                };
-                enemyList[id] = enemy; //insert in enemyList
-        }
-
-        randomlyGenerateEnemy = function () { // generate new enemy
-
-                var x = Math.random() * WIDTH;
-                var xspeed = 5 + Math.random() * 5;
-                var y = Math.random() * HEIGHT;
-                var yspeed = 5 + Math.random() * 5
-                var width = 10 + Math.random() * 25;
-                var height = 10 + Math.random() * 25;
-                var id = Math.random();
-
-                enemyConstructor(id, x, y, xspeed, yspeed, width, height);
-
-        }
-
-
-        UpgradeConstructor = function (id, x, y, xspeed, yspeed, width, height, color, category) { //upgrade constructor 
-
-                var upgrade = {
-
-                        type: 'upgrade',
-                        x: x,
-                        xspeed: xspeed,
-                        y: y,
-                        yspeed: yspeed,
-                        id: id,
-                        width: width,
-                        height: height,
-                        color: color,
-                        category: category,
-
-                };
-                upgradeList[id] = upgrade; //insert in upgradeList
-        }
-
-        randomlyGenerateUpgrade = function () { // generate new upgrade
-
-                var x = Math.random() * WIDTH;
-                var xspeed = 0;
-                var y = Math.random() * HEIGHT;
-                var yspeed = 0;
-                var width = 13;
-                var height = 13;
-                var id = Math.random();
-
-                if (Math.random() < 0.5) {
-
-                        var category = 'low';
-                        var color = 'khaki';
-
-                } else {
-
-                        var category = 'atkSpeed';
-                        var color = 'blueviolet';
-                }
-
-                UpgradeConstructor(id, x, y, xspeed, yspeed, width, height, color, category);
-
-        }
-
-        bulletConstructor = function (id, x, y, xspeed, yspeed, width, height, angle){ //bullet constructor
-
-                var bullet = {
-
-                        type: 'bullet',
-                        x: x,
-                        y: y,
-                        xspeed: xspeed,
-                        yspeed: yspeed,
-                        width: width,
-                        height: height,
-                        angle:0,
-                        color: 'black',
-                        id: id,
-                        timer: 0,
-                }
-                bulletList[id] = bullet; // insert in bulletList
-        }
-
-        randomlyGenerateBullet = function (actor,overwriteAngle) { // generate new bullet
-
-                var x = actor.x;
-                var y = actor.y;
-                var angle = actor.AimAngle;
-
-                if (overwriteAngle !== undefined ){
-                        angle = overwriteAngle;
-                }
-
-                var xspeed = Math.cos(angle / 180 * Math.PI) * 15;
-                var yspeed = Math.sin(angle / 180 * Math.PI) * 15;
-                var width = 5;
-                var height = 5;
-                var id = Math.random();
-                console.log (angle);
-
-                bulletConstructor(id, x, y, xspeed, yspeed, width, height,angle);
-
-        }
-
-        getDistanceBetweenEntity = function (entity1, entity2) { //return distance (number)
-
-                var vx = entity1.x - entity2.x;
-                var vy = entity1.y - entity2.y;
-                return Math.sqrt(vx * vx + vy * vy);
-        }
-
-
-        testCollisionRect = function (rect1, rect2) { //retun if colliding rectangles (true/false)
-
-                return rect1.x <= rect2.x + rect2.width
-                        && rect2.x <= rect1.x + rect1.width
-                        && rect1.y <= rect2.y + rect2.height
-                        && rect2.y <= rect1.y + rect1.height
-
-        }
-
-        testCollisionEntity = function (entity1, entity2) { //test if colides
-
-                var rect1 = {
-                        x: entity1.x - entity1.width / 2,
-                        y: entity1.y - entity1.height / 2,
-                        width: entity1.width,
-                        height: entity1.height,
-                }
-
-                var rect2 = {
-                        x: entity2.x - entity2.width / 2,
-                        y: entity2.y - entity2.height / 2,
-                        width: entity2.width,
-                        height: entity2.height,
-                }
-                return testCollisionRect(rect1, rect2);
-
-        }
-
-        drawEntity = function (param1) { // draw entity on the screen
-                ctx.save();
-                ctx.fillStyle = param1.color;
-                ctx.fillRect(param1.x - param1.width / 2, param1.y - param1.height / 2, param1.width, param1.height);
-                ctx.restore();
-        }
-
-        checkBoundaries = function (param1) { // check if colides with screen (x,y)limits 
-
-                if (param1.y <= 0 || param1.y >= HEIGHT) {
-
-                        param1.yspeed = -param1.yspeed;
-                }
-
-                if (param1.x <= 0 || param1.x >= WIDTH) {
-
-                        param1.xspeed = -param1.xspeed;
-                }
-
-        }
-        updateEntityposistion = function (param1) { // update position and check boundaries
-
-                if (param1.type === 'player') {
-                 
-                        if (player.pressingRight)
-                                player.x += 8;
-                        if (player.pressingLeft)
-                                player.x -= 8;
-                        if (player.pressingDown)
-                                player.y += 8;
-                        if (player.pressingUp)
-                                player.y -= 8;
-
-                        if (player.x < player.width / 2)
-                                player.x = player.width / 2;
-                        if (player.x > WIDTH - player.width / 2)
-                                player.x = WIDTH - player.width / 2;
-                        if (player.y < player.height / 2)
-                                player.y = player.height / 2;
-                        if (player.y > HEIGHT - player.height / 2)
-                                player.y = HEIGHT - player.height / 2;
-                } else {
-                        
-                        param1.x += param1.xspeed;
-                        param1.y += param1.yspeed;
-                
-                        }
-
-                checkBoundaries(param1);
-
-        }
-
-        updateEntity = function (param1) { // update an entity and check his boundaries
-
-                updateEntityposistion(param1);
-                drawEntity(param1);
-        }
-
-
-        clearScreen = function () { // clear the screen
-
-                ctx.clearRect(0, 0, WIDTH, HEIGHT);
-        }
-
-
-        document.onmousemove = function (mouse) { // gets mouse position when moved
-
-                var mouseX = mouse.clientX - document.getElementById('ctx').getBoundingClientRect().left;
-                var mouseY = mouse.clientY - document.getElementById('ctx').getBoundingClientRect().top;
-
-                
-                mouseX -= player.x;
-                mouseY -= player.y;
-                
-                player.AimAngle = Math.atan2 (mouseY,mouseX) / Math.PI * 180;
-
-
-        }
-
-        document.onclick = function (mouse) {
-
-                perFormAtack (player);
-        }
-        
-        perFormAtack = function (actor) {
-                
-                if (actor.atakCounter>50) { // every 1 sec
-                        shoot.play ();
-                        actor.atakCounter -= 25;
-                        randomlyGenerateBullet (actor);
-
-                }
-        }
-
-
-        document.oncontextmenu = function (mouse) {
-               
-                mouse.preventDefault ();
-                performSpecialAtack (player);
-        }
-
-        performSpecialAtack = function (actor) {
-
-                
-                if (actor.atakCounter > 500 ){
-
-                        supershoot.play ();
-                        var angle = 0; 
-
-                        for (var angle = 0; angle < 360 ;angle += 9) {
-                        randomlyGenerateBullet (actor, angle);
-                        } 
-                        actor.atakCounter = 0;
-                        actor.atakSpeed = 1;        
-                }
-
-                if (actor.atakCounter > 50 ){      
-
-                        bigshoot.play ();
-                        actor.atakCounter -= 50;
-                        randomlyGenerateBullet (actor, actor.AimAngle+15);
-                        randomlyGenerateBullet (actor, actor.AimAngle+5);
-                        randomlyGenerateBullet (actor);
-                        randomlyGenerateBullet (actor, actor.AimAngle-5);
-                        randomlyGenerateBullet (actor, actor.AimAngle-15);
-                } 
-        }
-
-
-        document.onkeydown = function (event) {
-
-                if (event.keyCode === 68)    //d 
-                       player.pressingRight = true;
-                else if (event.keyCode === 83)    //s 
-                       player.pressingDown = true;
-                else if (event.keyCode === 65)    //a 
-                       player.pressingLeft = true;
-                else if (event.keyCode === 87)    //w 
-                       player.pressingUp = true;
-
-        }
-        document.onkeyup = function (event) {
-
-                if (event.keyCode === 68)    //d 
-                       player.pressingRight = false;
-                else if (event.keyCode === 83)    //s 
-                       player.pressingDown = false;
-                else if (event.keyCode === 65)    //a 
-                       player.pressingLeft = false;
-                else if (event.keyCode === 87)    //w 
-                       player.pressingUp = false;
-
-
-        }
-        
-        player.atakCounter = 0;
-        update = function () { // call clearscreen, update functions and colision functions
-
-                clearScreen();
-
-                frameCount++;    /// TIME, IN A PERSPECTIVE WAY
-                score++;         //SCORE
-
-                player.atakCounter += player.atakSpeed // PLAYER ATACK COUNTER ADDED TO ATACK SPEED EACH FRAME
-                
-                if (player.atakCounter > 0)
-                        player.color = 'LightGreen';                
-                if (player.atakCounter >=50)
-                        player.color = 'Lime';
-                if (player.atakCounter  >=250)
-                        player.color = 'LawnGreen';
-                if (player.atakCounter  >=520)
-                        player.color = 'Yellow';
-
-
-                if (frameCount % 80 === 0)                                     //every 2,5 seconds 
-                       
-                        randomlyGenerateEnemy();
-
-                if (frameCount % 75 === 0)    
-
-                        randomlyGenerateUpgrade();
-
-                for (var key in enemyList) {
-
-                        updateEntity(enemyList[key]);
-
-                        var isColliding = testCollisionEntity(player, enemyList[key]);
-
-                        if (isColliding) {
-
-                                player.hp = player.hp - 1;
-                                hit.play ();
-                        }
-                }
-
-                for (var key in upgradeList) {
-
-                        updateEntity(upgradeList[key])
-
-                        var isColliding = testCollisionEntity(player, upgradeList[key]);
-
-                        if (isColliding) {
-
-                                if (upgradeList[key].category === 'low') {
-
-                                        score += 1000;
-                                        coin.play ();
-                                }
-
-                                if (upgradeList[key].category === 'atkSpeed') {
-
-                                        player.atakSpeed += 1;
-                                        powerup.play ();
-                                }
-
-                                delete upgradeList[key];
-                        }
-                }
-
-                for (var key in bulletList) {
-
-                        bulletList[key].timer++;
-                        updateEntity(bulletList[key])
-
-                        if (bulletList[key].timer > 40) {
-
-                                delete bulletList[key];
-                                continue;
-                        }
-
-                        for (var key2 in enemyList) {
-
-                                var isColliding = testCollisionEntity(bulletList[key], enemyList[key2]);
-
-                                if (isColliding) {
-
-                                        hit.play ();
-                                        delete bulletList[key];
-                                        enemyList[key2].height -= 4;
-                                        enemyList[key2].width -= 4;
-
-                                        if (enemyList[key2].width <= 12 || enemyList[key2].height <= 12)
-                                                
-                                                delete enemyList[key2];
-                                        break;
-                                }
-                        }
-
-
-                }
-
-                if (player.hp <= 0) {
-
-                        var timeSurvived = Date.now() - timeWhenGameStarted;
-                        alert('GAME OVER - Survived for '  + timeSurvived/1000 + "s - Score = " + score);                        
-                        startNewGame();
-
-                }
-
-                updateEntity (player);
-                ctx.fillText(player.hp + ' HP', 12, 25);
-                ctx.fillText('Score ' + score, 200, 25);
-        }
-
-
-        startNewGame = function () {
-
-                playerConstructor ();
-                timeWhenGameStarted = Date.now();
-                frameCount = 0;
-                score = 0;
-                enemyList = {};
-                upgradeList = {};
-                bulletList = {};
-                randomlyGenerateEnemy();
-                randomlyGenerateEnemy();
-                randomlyGenerateEnemy();
-        }
-
-        /////////////////////////////////// MAIN 
-
-        startNewGame();
-        setInterval(update, 50);
-
-</script>
-</centre>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jesus — Timeline & Historical Story (Interactive)</title>
+  <meta name="description" content="Interactive timeline and evidence-based narrative of the historical Jesus. Designed for scholars, students and the curious." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#98a0b3; --accent:#7dd3fc; --glass: rgba(255,255,255,0.04);
+      --maxw:1100px; --glass-2: rgba(255,255,255,0.02);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;
+      background:linear-gradient(180deg,#071024 0%, #07122a 55%, #07122a 100%); color:#e6eef8;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; padding:40px 20px;
+      display:flex; align-items:flex-start; justify-content:center;
+    }
+    .wrap{max-width:var(--maxw); width:100%;}
+
+    header{display:flex; gap:20px; align-items:center; margin-bottom:22px}
+    .logo{width:64px; height:64px; border-radius:10px; background:linear-gradient(135deg,#03203a,#06304e); display:flex;align-items:center;justify-content:center; box-shadow:0 6px 20px rgba(2,6,23,0.6);}
+    .logo strong{font-size:20px; color:var(--accent)}
+    h1{margin:0; font-weight:800; font-size:20px}
+    p.lead{margin:4px 0 0; color:var(--muted); font-size:13px}
+
+    .grid{display:grid; grid-template-columns: 360px 1fr; gap:20px}
+
+    /* left panel */
+    .panel{background:linear-gradient(180deg,var(--card), rgba(6,12,22,0.6)); border-radius:12px; padding:18px; box-shadow:0 6px 22px rgba(2,6,23,0.6);}
+    .panel h2{margin:0 0 10px; font-size:14px}
+    .meta{font-size:13px; color:var(--muted); line-height:1.6}
+    .filters{margin-top:12px; display:flex; flex-direction:column; gap:10px}
+    .search{display:flex; gap:8px}
+    .search input{flex:1; background:var(--glass); border:1px solid rgba(255,255,255,0.03); padding:10px 12px; border-radius:10px; color:inherit}
+    .chip-row{display:flex; gap:8px; flex-wrap:wrap}
+    .chip{background:var(--glass-2); padding:8px 10px; border-radius:999px; font-size:13px; cursor:pointer; border:1px solid rgba(255,255,255,0.02)}
+    .chip.active{background:linear-gradient(90deg,#07324a,#044d60); color:var(--accent); border-color: rgba(125,211,252,0.12)}
+
+    nav.timeline-nav{margin-top:14px; display:flex; gap:8px; flex-direction:column}
+    .summary{margin-top:12px; background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:12px; border-radius:8px; color:var(--muted); font-size:13px}
+
+    /* right content */
+    .canvas{min-height:600px; padding:18px; border-radius:12px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+
+    .timeline{position:relative; padding:18px 10px}
+    .ruler{height:2px; background:linear-gradient(90deg, rgba(125,211,252,0.14), rgba(125,211,252,0.04)); margin:12px 0; border-radius:2px}
+
+    .event-list{display:grid; gap:12px}
+    .event{display:flex; gap:14px; align-items:flex-start; padding:12px; background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); border-radius:10px; border:1px solid rgba(255,255,255,0.02)}
+    .event .dot{min-width:56px; text-align:center}
+    .badge{display:inline-block; padding:6px 8px; border-radius:8px; font-weight:600; font-size:13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03)}
+    .ev-title{font-weight:700}
+    .ev-meta{color:var(--muted); font-size:13px}
+
+    .event .body{flex:1}
+    .controls{display:flex; gap:8px; align-items:center}
+    button.btn{background:linear-gradient(90deg,#07324a,#035b73); border:none; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600}
+    button.ghost{background:transparent; border:1px solid rgba(255,255,255,0.04); padding:8px 10px}
+
+    .sources{margin-top:18px; color:var(--muted); font-size:13px}
+
+    footer{margin-top:22px; color:var(--muted); font-size:13px}
+
+    /* modal */
+    .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60}
+    .modal.open{display:flex}
+    .modal .win{width:min(920px,96%); max-height:88vh; overflow:auto; background:linear-gradient(180deg,#071829,#051126); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.03)}
+    .modal h3{margin-top:0}
+
+    /* responsive */
+    @media (max-width:880px){.grid{grid-template-columns:1fr;}.panel{order:2}.canvas{order:1}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo" aria-hidden="true"><strong>J</strong></div>
+      <div>
+        <h1>Jesus — Interactive Historical Timeline</h1>
+        <p class="lead">Concise, evidence-focused narrative and primary-source anchors. Use the filters to explore events, sources and scholarship.</p>
+      </div>
+    </header>
+
+    <main class="grid">
+      <aside class="panel" aria-label="Controls and metadata">
+        <h2>Filters & Tools</h2>
+        <div class="meta">
+          <div><strong>Scope:</strong> Life, ministry, trial & death, early reception (c. 4 BCE — 120 CE)</div>
+          <div style="margin-top:6px"><strong>Design goal:</strong> historically anchored, source-tagged events with modern scholarly notes.</div>
+        </div>
+
+        <div class="filters">
+          <div class="search" role="search">
+            <input id="q" placeholder="Search events or keywords (eg. Pilate, baptism, Galilee)" />
+            <button class="btn" id="searchBtn">Search</button>
+          </div>
+
+          <div class="chip-row" aria-label="Event type filters">
+            <div class="chip active" data-type="all">All</div>
+            <div class="chip" data-type="birth">Birth</div>
+            <div class="chip" data-type="ministry">Ministry</div>
+            <div class="chip" data-type="trial">Trial & Death</div>
+            <div class="chip" data-type="reception">Early Reception</div>
+            <div class="chip" data-type="source">Primary Sources</div>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button class="btn" id="showAll">Reset</button>
+            <button class="ghost" id="openSources">Sources</button>
+          </div>
+
+        </div>
+
+        <div class="summary" aria-live="polite">
+          <strong>Quick guide:</strong>
+          <div>Use the timeline to open detailed notes. Events include citations (Josephus, Tacitus, Paul, Gospels) and short scholarly commentary.</div>
+        </div>
+
+        <nav class="timeline-nav">
+          <h3 style="margin:12px 0 6px; font-size:13px">Jump to</h3>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <button class="chip" data-scroll="0">Birth & Context</button>
+            <button class="chip" data-scroll="5">Baptism & Early Ministry</button>
+            <button class="chip" data-scroll="10">Entry to Jerusalem</button>
+            <button class="chip" data-scroll="15">Trial & Crucifixion</button>
+            <button class="chip" data-scroll="20">Early Reception</button>
+          </div>
+        </nav>
+
+      </aside>
+
+      <section class="canvas panel" aria-label="Timeline canvas">
+        <div class="timeline">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+            <div><strong style="font-size:16px">Interactive Timeline</strong><div class="ev-meta">Chronological events with primary-source anchors</div></div>
+            <div class="controls"><button class="ghost" id="play">Auto-play</button><button class="btn" id="exportBtn">Export PDF</button></div>
+          </div>
+
+          <div class="ruler" aria-hidden="true"></div>
+
+          <div class="event-list" id="events"></div>
+
+          <div class="sources" id="footerSources">
+            <strong>Key sources:</strong> Josephus (Antiquities), Tacitus (Annals), Pliny the Younger, Paul (letters), Synoptic Gospels. Click 'Sources' for full bibliography and translations.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <div>Built for historical clarity • Includes source notes & suggested bibliography</div>
+        <div style="font-size:13px; color:var(--muted)">v1 — interactive single-file</div>
+      </div>
+    </footer>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="win" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">Primary Sources & Bibliography</h3>
+      <p style="color:var(--muted)">Translations provided for readability. For scholarship consult original-language editions and critical commentaries.</p>
+      <div id="sourceBody"></div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px">
+        <button class="ghost" id="closeModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DATA: curated timeline events (brief, historically oriented)
+    const EVENTS = [
+      {id:1, year:-6, type:'birth', title:'Estimated birth of Jesus (approx.)', tag:'Context', summary:'Scholars place Jesus\' birth between 6–4 BCE based on historical clues (Herod the Great).', sources:['Matthew(2)','Luke(2)']},
+      {id:2, year:4, type:'context', title:'Herod the Great dies (4 BCE)', tag:'Context', summary:'Herod\'s death helps anchor chronology used in Gospel accounts.', sources:['Josephus']},
+      {id:3, year:26, type:'ministry', title:'Start of John the Baptist\'s activity', tag:'Ministry', summary:'John the Baptist is a key precursor; his ministry overlaps with early Jesus traditions.', sources:['Luke(3)','Josephus']},
+      {id:4, year:28, type:'ministry', title:'Baptism of Jesus by John', tag:'Ministry', summary:'Attested in all four Gospels and referenced implicitly in Paul. Considered an early and likely historical event.', sources:['Mark(1)','Paul']},
+      {id:5, year:29, type:'ministry', title:'Galilean ministry and teachings', tag:'Ministry', summary:'Parables, healings, and itinerant preaching; scholars debate precise chronology but agree on a Galilean core.', sources:['Mark','Q?']},
+      {id:6, year:30, type:'trial', title:'Entry into Jerusalem — Passion Week', tag:'Trial', summary:'Final week: entry, temple actions, Last Supper, arrest, trial, crucifixion.', sources:['Mark','Luke','John','Tacitus','Josephus']},
+      {id:7, year:30, type:'trial', title:'Crucifixion under Pontius Pilate', tag:'Trial', summary:'Multiple independent attestations (Roman & Jewish authors) link execution to Pilate.', sources:['Tacitus','Josephus','Gospels','Paul']},
+      {id:8, year:33, type:'reception', title:'Earliest Christian groups and Paul\'s letters (c. 50–60 CE)', tag:'Reception', summary:'Letters of Paul reference communities and named individuals who knew Jesus or early followers.', sources:['Paul']},
+      {id:9, year:93, type:'source', title:'Josephus mentions Jesus & James (Antiquities, c.93)', tag:'Source', summary:'Two passages in Antiquities refer to Jesus and to James, brother of Jesus; one passage (Testimonium) is debated but a core reference is widely accepted.', sources:['Josephus']},
+      {id:10, year:112, type:'source', title:'Pliny the Younger on Christian worship (c.112)', tag:'Source', summary:'Early Roman description of Christian practice: singing hymns to Christ as a god.', sources:['Pliny']},
+      {id:11, year:116, type:'source', title:'Tacitus on Christus and execution under Pilate (c.116)', tag:'Source', summary:'Tacitus attests to Christus executed under Pilate and notes repression of the superstition after Nero\'s persecution.', sources:['Tacitus']}
+    ];
+
+    // Utils & render
+    const eventsEl = document.getElementById('events');
+    function render(list){
+      eventsEl.innerHTML='';
+      list.forEach(e=>{
+        const div = document.createElement('div'); div.className='event';
+        div.innerHTML = `
+          <div class="dot"><div class="badge">${e.year <=0 ? Math.abs(e.year)+ ' BCE' : e.year + ' CE'}</div></div>
+          <div class="body">
+            <div class="ev-title">${e.title}</div>
+            <div class="ev-meta">${e.summary}</div>
+            <div style="margin-top:8px; display:flex; gap:8px; align-items:center">
+              <button class="chip" data
